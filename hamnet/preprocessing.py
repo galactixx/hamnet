@@ -1,3 +1,9 @@
+"""Data structures and preprocessing utilities for HAM10000 dataset.
+
+Provides `HamImage` records, metadata loading/cleaning, normalization helpers,
+and a `Dataset` for classification with optional augmentations.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Sequence, Tuple
@@ -14,6 +20,8 @@ from hamnet.constants import ANATOM_SITE_MAPPING, DIAGNOSIS_MAPPING, SEX_MAPPING
 
 @dataclass(frozen=True)
 class HamImage:
+    """Lightweight record for an image and its associated metadata."""
+
     path: Path
     identifier: str
     age: str
@@ -23,6 +31,7 @@ class HamImage:
 
 
 def concat_metadata(paths: List[Path]) -> pd.DataFrame:
+    """Read and concatenate metadata.csv files from base paths with base_path column."""
     data = pd.DataFrame()
     for path in paths:
         metadata = pd.read_csv(path / "metadata.csv")
@@ -33,6 +42,7 @@ def concat_metadata(paths: List[Path]) -> pd.DataFrame:
 
 
 def load_metadata(metadata: pd.DataFrame) -> List[HamImage]:
+    """Filter required fields and convert rows into `HamImage` records."""
     metadata = metadata[pd.notnull(metadata["age_approx"])]
     metadata = metadata[pd.notnull(metadata["sex"])]
     metadata = metadata[pd.notnull(metadata["anatom_site_general"])]

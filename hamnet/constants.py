@@ -1,3 +1,5 @@
+"""Project-wide constants and categorical mappings used across the codebase."""
+
 SEED = 42
 
 SEX_MAPPING = {"male": 0, "female": 1}

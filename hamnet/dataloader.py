@@ -1,3 +1,5 @@
+"""Data split and DataLoader creation utilities."""
+
 from typing import List, Tuple
 
 import torch
@@ -11,6 +13,7 @@ from hamnet.preprocessing import HamImage, HamImageDiagnosisDataset
 def get_train_test_val_split(
     images: List[HamImage],
 ) -> Tuple[List[HamImage], List[HamImage], List[HamImage]]:
+    """Split images into train/val/test with stratification on labels."""
     labels = [DIAGNOSIS_MAPPING[img.diagnosis] for img in images]
 
     train_images, temp_images, _, temp_labels = train_test_split(
@@ -33,6 +36,7 @@ def get_dataloader(
     test_images: List[HamImage],
     val_images: List[HamImage],
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    """Create PyTorch dataloaders with deterministic shuffling for train set."""
     train = HamImageDiagnosisDataset(train_images, train=True)
     test = HamImageDiagnosisDataset(test_images, train=False)
     val = HamImageDiagnosisDataset(val_images, train=False)

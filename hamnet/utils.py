@@ -1,3 +1,9 @@
+"""Utility helpers for training and evaluation.
+
+Contains progressive unfreezing utilities, checkpoint-safe load helpers,
+evaluation, and seeding for reproducibility.
+"""
+
 import os
 import random
 from collections import deque
@@ -15,6 +21,7 @@ from hamnet.hamnet import HamNet
 
 
 def unfreeze_layer(model: torch.nn.Module, layer: str) -> None:
+    """Unfreeze parameters and enable training for BatchNorm in a layer prefix."""
     for name, param in model.named_parameters():
         if name.startswith(layer):
             param.requires_grad = True
@@ -26,6 +33,8 @@ def unfreeze_layer(model: torch.nn.Module, layer: str) -> None:
 
 @dataclass(frozen=True)
 class ParamGroup:
+    """Optimizer hyperparameters associated with a layer to unfreeze at an epoch."""
+
     layer: str
     epoch: int
     params: torch.nn.Parameter
@@ -44,6 +53,8 @@ class ParamGroup:
 
 
 class ProgressiveUnfreezer:
+    """Manage progressive unfreezing by epoch and add optimizer param groups."""
+
     def __init__(self, model: torch.nn.Module, params: List[ParamGroup]) -> None:
         self.model = model
         self.params = deque(sorted(params, key=lambda x: x.epoch))
@@ -58,6 +69,7 @@ class ProgressiveUnfreezer:
         self._optimizer = optimizer
 
     def unfreeze(self, epoch: int) -> None:
+        """If the current epoch matches the schedule, unfreeze next layer."""
         if not len(self.params):
             return None
 
@@ -72,6 +84,7 @@ class ProgressiveUnfreezer:
 def safe_load_into_ham(
     model: HamNet, path: Path, device: torch.device, layer_prefix: str
 ) -> HamNet:
+    """Load a checkpoint into `HamNet` fixing layer prefixes for the backbone."""
     sd = torch.load(path, map_location=torch.device(device), weights_only=True)
 
     if isinstance(sd, dict) and "state_dict" in sd:
@@ -81,7 +94,7 @@ def safe_load_into_ham(
     for k, v in sd.items():
         nk = k
 
-        # Common prefix fixes
+        # Common prefix fixes to align checkpoint keys with current model
         if nk.startswith(layer_prefix):
             nk = "backbone." + nk[len(layer_prefix) :]
 
@@ -94,6 +107,7 @@ def safe_load_into_ham(
 def test_evaluate(
     model: torch.nn.Module, loader: DataLoader, device: torch.device
 ) -> float:
+    """Compute accuracy over a dataloader without gradient calculations."""
     correct = total = 0
 
     with torch.no_grad():
@@ -110,6 +124,7 @@ def test_evaluate(
 
 
 def seed_everything(seed: int) -> None:
+    """Seed Python, NumPy and PyTorch for reproducibility (incl. CUDA)."""
     os.environ["PYTHONHASHSEED"] = str(seed)
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 

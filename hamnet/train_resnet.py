@@ -1,3 +1,5 @@
+"""Entry point script to train HamResNet with progressive unfreezing."""
+
 import torch
 from huggingface_hub import hf_hub_download
 from torchvision import models

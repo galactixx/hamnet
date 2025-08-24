@@ -1,3 +1,5 @@
+"""Inference script to evaluate a pretrained HamDenseNet checkpoint on test split."""
+
 from pathlib import Path
 
 import torch
@@ -21,6 +23,7 @@ if __name__ == "__main__":
     model.to(device)
 
     pth_path = hf_hub_download("galactixx/Ham-DenseNet", "ham-densenet.bin")
+    # Load checkpoint and fix prefix to match current backbone naming
     model = safe_load_into_ham(model, pth_path, device=device, layer_prefix="densenet.")
 
     model.eval()

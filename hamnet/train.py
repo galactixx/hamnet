@@ -1,3 +1,9 @@
+"""Training loop and evaluation utilities for HamNet models.
+
+Includes AMP-enabled training, EMA tracking, class-balanced loss weights,
+and early stopping with LR scheduling.
+"""
+
 from pathlib import Path
 from typing import Tuple
 
@@ -25,7 +31,12 @@ def train_evaluate(
     criterion: CrossEntropyLoss,
     ema: ExponentialMovingAverage,
 ) -> Tuple[int, int]:
+    """Evaluate the model on a dataloader using EMA weights.
+
+    Returns average loss and accuracy.
+    """
     model.eval()
+    # Temporarily swap to EMA weights for evaluation
     ema.store()
     ema.copy_to()
     correct = total = 0
@@ -44,12 +55,18 @@ def train_evaluate(
 
             running_loss += loss.item() * imgs.size(0)
 
+    # Restore original (non-EMA) weights after evaluation
     ema.restore()
     eval_loss = running_loss / len(loader.dataset)
     return eval_loss, correct / total
 
 
 def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
+    """Train a `HamNet` model with progressive layer unfreezing.
+
+    The function performs train/val split, constructs loaders, optimizers,
+    LR scheduler, class-balanced loss, and runs AMP training with EMA.
+    """
     seed_everything(SEED)
 
     ham_dir = Path("data/HAM10000")

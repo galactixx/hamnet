@@ -28,6 +28,7 @@ def unfreeze_layer(model: torch.nn.Module, layer: str) -> None:
 
     for name, module in model.named_modules():
         if name.startswith(layer) and isinstance(module, torch.nn.BatchNorm2d):
+            # BatchNorm needs train mode to update running stats after unfreezing
             module.train()
 
 
@@ -70,12 +71,14 @@ class ProgressiveUnfreezer:
 
     def unfreeze(self, epoch: int) -> None:
         """If the current epoch matches the schedule, unfreeze next layer."""
+        # Nothing left to unfreeze
         if not len(self.params):
             return None
 
         top = self.params[0]
         if epoch == top.epoch:
             unfreeze_layer(model=self.model, layer=top.layer)
+            # Start optimizing the newly unfrozen parameters
             self.optimizer.add_param_group(top.group)
             self.params.popleft()
             print("Unfreezing layer...")
@@ -126,6 +129,7 @@ def test_evaluate(
 def seed_everything(seed: int) -> None:
     """Seed Python, NumPy and PyTorch for reproducibility (incl. CUDA)."""
     os.environ["PYTHONHASHSEED"] = str(seed)
+    # Make CUDA algorithms deterministic where possible
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
     random.seed(seed)

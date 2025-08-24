@@ -77,6 +77,7 @@ def normalize_meta(
 class HamImageDiagnosisDataset(Dataset):
     def __init__(self, images: List[HamImage], train: bool) -> None:
         self.images = images
+        # Standard ImageNet normalization used by torchvision backbones
         self.mean = [0.485, 0.456, 0.406]
         self.std = [0.229, 0.224, 0.225]
 
@@ -90,6 +91,7 @@ class HamImageDiagnosisDataset(Dataset):
         self.mean_site, self.std_site = compute_mean_std(sites)
 
         if not train:
+            # Deterministic transforms for evaluation
             self.transforms = transforms.Compose(
                 [
                     transforms.ToPILImage(),
@@ -99,6 +101,7 @@ class HamImageDiagnosisDataset(Dataset):
                 ]
             )
         else:
+            # Light augmentation for regularization during training
             self.transforms = transforms.Compose(
                 [
                     transforms.ToPILImage(),
@@ -119,6 +122,7 @@ class HamImageDiagnosisDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, int]:
         image = self.images[index]
         image_path = image.path / f"{image.identifier}.jpg"
+        # Load BGR image via OpenCV and convert to RGB tensor
         img = cv2.imread(image_path, cv2.IMREAD_COLOR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = self.transforms(img)
@@ -128,6 +132,7 @@ class HamImageDiagnosisDataset(Dataset):
         site = ANATOM_SITE_MAPPING[image.anatom_site]
         age = float(image.age)
 
+        # Normalize tabular metadata to zero mean, unit variance
         meta = normalize_meta(
             values=[sex, age, site],
             means=[self.mean_sex, self.mean_age, self.mean_site],

@@ -41,9 +41,11 @@ def get_dataloader(
     test = HamImageDiagnosisDataset(test_images, train=False)
     val = HamImageDiagnosisDataset(val_images, train=False)
 
+    # Use a generator to make shuffling reproducible across runs
     g = torch.Generator()
     g.manual_seed(SEED)
 
+    # Slightly larger batch for efficiency; workers tuned for common CPUs
     trainloader = DataLoader(
         train, shuffle=True, batch_size=32, generator=g, num_workers=2
     )

@@ -32,6 +32,7 @@ class HamNet(torch.nn.Module, ABC):
         super().__init__()
         self.backbone, num_features = self.set_backbone(backbone)
 
+        # Small MLP to process 3 metadata features: sex, age, anatom_site
         self.meta_net = torch.nn.Sequential(
             torch.nn.Linear(3, 64),
             torch.nn.SiLU(),
@@ -39,6 +40,8 @@ class HamNet(torch.nn.Module, ABC):
             torch.nn.SiLU(),
         )
 
+        # Final classifier over concatenated [image_features || meta_features]
+        # Output has 7 logits corresponding to 7 diagnosis classes
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(num_features + 128, 1024),
             torch.nn.SiLU(),
@@ -73,6 +76,7 @@ class HamNet(torch.nn.Module, ABC):
         """
         img_features = self.backbone(img)
         meta_features = self.meta_net(meta)
+        # Concatenate along feature dimension (B, F_img + F_meta)
         x = torch.cat([img_features, meta_features], dim=1)
         return self.classifier(x)
 

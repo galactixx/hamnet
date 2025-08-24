@@ -87,10 +87,12 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
     counts = torch.bincount(torch.tensor(train_labels), minlength=num_classes)
     weights = counts.sum() / (num_classes * counts.clamp_min(1))
 
+    # Track an exponential moving average of model weights for more stable eval
     ema = ExponentialMovingAverage(model.parameters(), decay=0.999)
 
     EPOCHS = 100
 
+    # Start by training the classifier and metadata MLP; backbone is frozen
     optimizer = SGD(
         [
             {
@@ -108,7 +110,9 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
         ]
     )
     unfreezer.optimizer = optimizer
+    # Reduce LR when validation loss plateaus
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=3)
+    # Class-balanced loss using inverse-frequency weights with mild smoothing
     criterion = CrossEntropyLoss(
         label_smoothing=0.05, weight=torch.tensor(weights).to(device)
     )
@@ -128,13 +132,16 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
 
             optimizer.zero_grad()
 
+            # Mixed precision forward + loss for speed and memory
             with autocast():
                 preds = model(imgs, meta)
                 loss = criterion(preds, labels)
 
+            # Scaled backward/step to keep FP16 numerics stable
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
+            # Update EMA after optimizer step
             ema.update()
 
             running_loss += loss.item() * imgs.size(0)
@@ -151,6 +158,7 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
             f"Accuracy: {val_acc:.3f}.."
         )
 
+        # Simple early stopping on val loss
         if val_loss < best_loss:
             no_improve = 0
             best_loss = val_loss
@@ -159,5 +167,6 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
             if no_improve >= patience:
                 break
 
+        # Gradually unfreeze scheduled backbone layers
         unfreezer.unfreeze(epoch=epoch + 1)
         torch.cuda.empty_cache()

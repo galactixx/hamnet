@@ -1,3 +1,5 @@
+"""Entry point script to train HamDenseNet with progressive unfreezing."""
+
 import shutil
 from pathlib import Path
 
@@ -21,11 +23,11 @@ def get_densenet() -> DenseNet:
         )
     )
 
-    # Torch cache path
+    # Torch cache path for torchvision checkpoints
     cache = Path.home() / ".cache" / "torch" / "hub" / "checkpoints"
     cache.mkdir(parents=True, exist_ok=True)
 
-    # copy the weights into cache
+    # Copy the weights into cache if not already present
     dst = cache / src.name
     if not dst.exists():
         shutil.copy2(src, dst)

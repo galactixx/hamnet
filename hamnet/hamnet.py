@@ -25,11 +25,6 @@ class HamNet(torch.nn.Module, ABC):
             torch.nn.Linear(1024, 7),
         )
 
-    @property
-    @abstractmethod
-    def backbone_num_features(self) -> int:
-        pass
-
     @abstractmethod
     def set_backbone(self, backbone: torch.nn.Module) -> Tuple[torch.nn.Module, int]:
         pass

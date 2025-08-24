@@ -13,6 +13,7 @@ from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
 from hamnet.hamnet import HamDenseNet
 from hamnet.preprocessing import concat_metadata, load_metadata
+from hamnet.utils import safe_load_into_ham
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -47,11 +48,11 @@ if __name__ == "__main__":
     model.to(device)
 
     pth_path = hf_hub_download("galactixx/Ham-DenseNet", "ham-densenet.bin")
-    model.load_state_dict(torch.load(pth_path))
+    model = safe_load_into_ham(model, pth_path, device=device, layer_prefix="densenet.")
 
     model.eval()
 
-    ham_dir = Path("ham")
+    ham_dir = Path("data/HAM10000")
     metadata = concat_metadata(paths=[ham_dir])
     images = load_metadata(metadata=metadata)
 

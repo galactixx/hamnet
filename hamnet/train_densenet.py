@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch_ema import ExponentialMovingAverage
 from torchvision import models
+from torchvision.models import DenseNet121_Weights
 from torchvision.models.densenet import DenseNet
 from tqdm import tqdm
 
@@ -75,6 +77,23 @@ class ProgressiveUnfreezer:
             print("Unfreezing layer...")
 
 
+def get_densenet() -> DenseNet:
+    src = Path(hf_hub_download("galactixx/Ham-DenseNet", "densenet121-a639ec97.bin"))
+
+    # Torch cache path
+    cache = Path.home() / ".cache" / "torch" / "hub" / "checkpoints"
+    cache.mkdir(parents=True, exist_ok=True)
+
+    # copy the weights into cache
+    dst = cache / src.name
+    if not dst.exists():
+        shutil.copy2(src, dst)
+
+    densenet = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
+    densenet.load_state_dict(torch.load(dst, map_location=torch.device(device)))
+    return densenet
+
+
 def train_evaluate(
     model: DenseNet,
     loader: DataLoader,
@@ -114,7 +133,7 @@ if __name__ == "__main__":
     torch.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
 
-    ham_dir = Path("ham")
+    ham_dir = Path("data/HAM10000")
     metadata = concat_metadata(paths=[ham_dir])
     images = load_metadata(metadata=metadata)
 
@@ -128,7 +147,7 @@ if __name__ == "__main__":
 
     pth_path = hf_hub_download("galactixx/Ham-DenseNet", "densenet121-a639ec97.bin")
     densenet = models.densenet121(weights=None)
-    densenet.load_state_dict(torch.load(pth_path))
+    densenet.load_state_dict(torch.load(pth_path, map_location=torch.device("cpu")))
 
     for name, param in densenet.named_parameters():
         param.requires_grad = False

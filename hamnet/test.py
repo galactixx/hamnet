@@ -1,11 +1,15 @@
+import os
+import random
 from pathlib import Path
 
+import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from torch.utils.data import DataLoader
 from torchvision import models
 from tqdm import tqdm
 
+from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
 from hamnet.hamnet import HamDenseNet
 from hamnet.preprocessing import concat_metadata, load_metadata
@@ -14,7 +18,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def test_evaluate(model: torch.nn.Module, loader: DataLoader) -> float:
-    model.eval()
     correct = total = 0
 
     with torch.no_grad():
@@ -31,6 +34,14 @@ def test_evaluate(model: torch.nn.Module, loader: DataLoader) -> float:
 
 
 if __name__ == "__main__":
+    os.environ["PYTHONHASHSEED"] = str(SEED)
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
     densenet = models.densenet121(weights=None)
     model = HamDenseNet(densenet=densenet)
     model.to(device)

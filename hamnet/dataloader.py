@@ -4,8 +4,8 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
-from hamnet.constants import SEED
-from hamnet.preprocessing import DIAGNOSIS_MAPPING, HamImage, HamImageDiagnosisDataset
+from hamnet.constants import DIAGNOSIS_MAPPING, SEED
+from hamnet.preprocessing import HamImage, HamImageDiagnosisDataset
 
 
 def get_train_test_val_split(

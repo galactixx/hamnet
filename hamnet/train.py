@@ -1,8 +1,11 @@
+import os
+import random
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from torch.cuda.amp import GradScaler, autocast
@@ -15,6 +18,7 @@ from torchvision import models
 from torchvision.models.densenet import DenseNet
 from tqdm import tqdm
 
+from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
 from hamnet.hamnet import HamDenseNet
 from hamnet.preprocessing import DIAGNOSIS_MAPPING, concat_metadata, load_metadata
@@ -102,6 +106,14 @@ def train_evaluate(
 
 
 if __name__ == "__main__":
+    os.environ["PYTHONHASHSEED"] = str(SEED)
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+
     ham_dir = Path("ham")
     metadata = concat_metadata(paths=[ham_dir])
     images = load_metadata(metadata=metadata)

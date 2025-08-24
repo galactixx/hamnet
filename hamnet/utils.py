@@ -1,8 +1,72 @@
+import os
+import random
+from collections import deque
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 import torch
+from torch.optim import SGD
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from hamnet.hamnet import HamNet
+
+
+def unfreeze_layer(model: torch.nn.Module, layer: str) -> None:
+    for name, param in model.named_parameters():
+        if name.startswith(layer):
+            param.requires_grad = True
+
+    for name, module in model.named_modules():
+        if name.startswith(layer) and isinstance(module, torch.nn.BatchNorm2d):
+            module.train()
+
+
+@dataclass(frozen=True)
+class ParamGroup:
+    layer: str
+    epoch: int
+    params: torch.nn.Parameter
+    lr: float
+    momentum: float
+    decay: float
+
+    @property
+    def group(self) -> Dict[str, Any]:
+        return {
+            "params": self.params,
+            "lr": self.lr,
+            "momentum": self.momentum,
+            "weight_decay": self.decay,
+        }
+
+
+class ProgressiveUnfreezer:
+    def __init__(self, model: torch.nn.Module, params: List[ParamGroup]) -> None:
+        self.model = model
+        self.params = deque(sorted(params, key=lambda x: x.epoch))
+        self._optimizer: Optional[SGD] = None
+
+    @property
+    def optimizer(self) -> SGD:
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, optimizer: SGD) -> None:
+        self._optimizer = optimizer
+
+    def unfreeze(self, epoch: int) -> None:
+        if not len(self.params):
+            return None
+
+        top = self.params[0]
+        if epoch == top.epoch:
+            unfreeze_layer(model=self.model, layer=top.layer)
+            self.optimizer.add_param_group(top.group)
+            self.params.popleft()
+            print("Unfreezing layer...")
 
 
 def safe_load_into_ham(
@@ -25,3 +89,31 @@ def safe_load_into_ham(
 
     model.load_state_dict(new_sd, strict=True)
     return model
+
+
+def test_evaluate(
+    model: torch.nn.Module, loader: DataLoader, device: torch.device
+) -> float:
+    correct = total = 0
+
+    with torch.no_grad():
+        for imgs, meta, labels in tqdm(loader, desc=f"Evaluation: "):
+            imgs, meta, labels = imgs.to(device), meta.to(device), labels.to(device)
+
+            logits = model(imgs, meta)
+            preds = logits.argmax(dim=1)
+
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+
+    return correct / total
+
+
+def seed_everything(seed: int) -> None:
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

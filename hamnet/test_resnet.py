@@ -6,7 +6,7 @@ from torchvision import models
 
 from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
-from hamnet.hamnet import HamDenseNet
+from hamnet.hamnet import HamResNet
 from hamnet.preprocessing import concat_metadata, load_metadata
 from hamnet.utils import safe_load_into_ham, seed_everything, test_evaluate
 
@@ -16,12 +16,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if __name__ == "__main__":
     seed_everything(SEED)
 
-    densenet = models.densenet121(weights=None)
-    model = HamDenseNet(densenet=densenet)
+    resnet = models.resnet50(weights=None)
+    model = HamResNet(resnet=resnet)
     model.to(device)
 
-    pth_path = hf_hub_download("galactixx/Ham-DenseNet", "ham-densenet.bin")
-    model = safe_load_into_ham(model, pth_path, device=device, layer_prefix="densenet.")
+    pth_path = hf_hub_download("galactixx/Ham-ResNet", "ham-resnet.bin")
+    model = safe_load_into_ham(model, pth_path, device=device, layer_prefix="resnet.")
 
     model.eval()
 

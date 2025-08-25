@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
+import torchvision.transforms.functional as F
 from torch.optim import SGD
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -111,14 +112,27 @@ def test_evaluate(
     model: torch.nn.Module, loader: DataLoader, device: torch.device
 ) -> float:
     """Compute accuracy over a dataloader without gradient calculations."""
+    tta_transforms = [
+        lambda x: x,
+        lambda x: F.hflip(x),
+        lambda x: x.vflip(x),
+        lambda x: F.rotate(x, 15),
+    ]
+
     correct = total = 0
 
     with torch.no_grad():
         for imgs, meta, labels in tqdm(loader, desc=f"Evaluation: "):
             imgs, meta, labels = imgs.to(device), meta.to(device), labels.to(device)
 
-            logits = model(imgs, meta)
-            preds = logits.argmax(dim=1)
+            probs = []
+
+            for aug in tta_transforms:
+                imgs = torch.stack([aug(img.cpu()) for img in imgs]).to(device)
+                logits = model(imgs, meta)
+                probs.append(torch.softmax(logits), dim=1)
+
+            preds = torch.stack(probs).mean(0).argmax(1)
 
             correct += (preds == labels).sum().item()
             total += labels.size(0)

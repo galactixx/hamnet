@@ -117,6 +117,7 @@ def test_evaluate(
         lambda x: F.hflip(x),
         lambda x: F.vflip(x),
         lambda x: F.rotate(x, 15),
+        lambda x: F.adjust_brightness(x, 0.2)
     ]
 
     correct = total = 0

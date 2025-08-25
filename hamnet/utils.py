@@ -115,7 +115,7 @@ def test_evaluate(
     tta_transforms = [
         lambda x: x,
         lambda x: F.hflip(x),
-        lambda x: x.vflip(x),
+        lambda x: F.vflip(x),
         lambda x: F.rotate(x, 15),
     ]
 

@@ -1,5 +1,5 @@
 ## HamNet (ResNet50 & DenseNet121)
-Fine-tuned ResNet50 and DenseNet121 for binary skin lesion classification on HAM10000.
+Fine-tuned ResNet50 and DenseNet121 for skin lesion classification on HAM10000.
 
 ### What is this?
 HamNet provides two transfer-learning models (ResNet50 and DenseNet121), fine-tuned to classify dermoscopic images into two classes on the HAM10000 dataset.
@@ -9,7 +9,7 @@ HamNet provides two transfer-learning models (ResNet50 and DenseNet121), fine-tu
 
 ### Model
 - **Backbones**: ResNet50 and DenseNet121 pre-trained on ImageNet
-- **Head**: Replaced final FC layer for binary classification
+- **Head**: Replaced final FC layer for classification
 - **Training**: Fine-tuned on HAM10000 splits
 
 ### Results

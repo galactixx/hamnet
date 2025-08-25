@@ -1,39 +1,45 @@
-## ISIC-Net (ResNet50)
-Fine-tuned ResNet50 for binary skin lesion classification, trained on HAM10000 and BCN20000.
+## HamNet (ResNet50 & DenseNet121)
+Fine-tuned ResNet50 and DenseNet121 for binary skin lesion classification on HAM10000.
 
 ### What is this?
-ISIC-Net is a transfer-learning model based on ResNet50, fine-tuned to classify dermoscopic images into two classes. It leverages a combined dataset from HAM10000 and BCN20000 for generalization.
+HamNet provides two transfer-learning models (ResNet50 and DenseNet121), fine-tuned to classify dermoscopic images into two classes on the HAM10000 dataset.
 
 ### Datasets
 - **HAM10000**: Dermatoscopic images of common pigmented skin lesions
-- **BCN20000**: Large-scale dermatoscopic dataset for skin lesion analysis
 
 ### Model
-- **Backbone**: ResNet50 pre-trained on ImageNet
+- **Backbones**: ResNet50 and DenseNet121 pre-trained on ImageNet
 - **Head**: Replaced final FC layer for binary classification
-- **Training**: Fine-tuned on merged HAM10000 + BCN20000 splits
+- **Training**: Fine-tuned on HAM10000 splits
 
 ### Results
-- **Test accuracy**: 88.1%
-- **Classification report**:
-
-```text
-              precision    recall  f1-score   support
-
-           0       0.86      0.86      0.86      1607
-           1       0.90      0.90      0.90      2251
-
-    accuracy                           0.88      3858
-   macro avg       0.88      0.88      0.88      3858
-weighted avg       0.88      0.88      0.88      3858
-```
+- **Test accuracy (HAM10000)**: ResNet50 = 89.1%, DenseNet121 = 88.5%
 
 ### Repository contents
-- `isic-net.ipynb`: End-to-end notebook for training and evaluation
-- `isic-net.pth`: Trained ResNet50 weights
+- `hamnet/train_resnet.py`: Train ResNet50 with progressive unfreezing
+- `hamnet/test_resnet.py`: Evaluate a pretrained ResNet50 on the test split
+- `hamnet/train_densenet.py`: Train DenseNet121 with progressive unfreezing
+- `hamnet/test_densenet.py`: Evaluate a pretrained DenseNet121 on the test split
 
 ### Quick start
-1. Open `isic-net.ipynb`
-2. Ensure `isic-net.pth` is available if you want to load the trained weights
-3. Run the notebook cells to evaluate or fine-tune further
+1. Download HAM10000 from the ISIC Archive: go to [HAM10000 collection](https://api.isic-archive.com/collections/212/), click "Actions" → "Download Collection".
+2. Unzip the download into `data/HAM10000/` so that images and metadata reside under this folder.
+3. Evaluate pretrained models:
+   - ResNet50:
+     ```bash
+     python hamnet/test_resnet.py
+     ```
+   - DenseNet121:
+     ```bash
+     python hamnet/test_densenet.py
+     ```
+4. Train from ImageNet-pretrained backbones (optional):
+   - ResNet50:
+     ```bash
+     python hamnet/train_resnet.py
+     ```
+   - DenseNet121:
+     ```bash
+     python hamnet/train_densenet.py
+     ```
 

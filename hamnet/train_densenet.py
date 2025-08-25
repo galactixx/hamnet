@@ -41,13 +41,16 @@ if __name__ == "__main__":
     densenet = get_densenet()
     model = HamDenseNet(densenet=densenet)
 
+    # Freeze backbone parameters before progressive unfreezing schedule
     for _, param in model.backbone.named_parameters():
         param.requires_grad = False
 
+    # Keep BatchNorm layers in eval mode until their blocks are unfrozen
     for _, module in model.backbone.named_modules():
         if isinstance(module, torch.nn.BatchNorm2d):
             module.eval()
 
+    # Define which DenseNet blocks to unfreeze and when during training
     unfreezer = ProgressiveUnfreezer(
         model.backbone.features,
         [

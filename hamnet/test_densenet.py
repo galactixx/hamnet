@@ -18,6 +18,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if __name__ == "__main__":
     seed_everything(SEED)
 
+    # Initialize architecture; weights are loaded from checkpoint below
     densenet = models.densenet121(weights=None)
     model = HamDenseNet(densenet=densenet)
     model.to(device)
@@ -26,6 +27,7 @@ if __name__ == "__main__":
     # Load checkpoint and fix prefix to match current backbone naming
     model = safe_load_into_ham(model, pth_path, device=device, layer_prefix="densenet.")
 
+    # Switch to eval mode for deterministic BatchNorm/Dropout
     model.eval()
 
     ham_dir = Path("data/HAM10000")

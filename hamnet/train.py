@@ -82,9 +82,11 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
     )
 
     model.to(device)
+    # Compute class frequencies on the training split
     train_labels = [DIAGNOSIS_MAPPING[img.diagnosis] for img in train_images]
     num_classes = len(list(set(train_labels)))
     counts = torch.bincount(torch.tensor(train_labels), minlength=num_classes)
+    # Inverse-frequency weights with mild smoothing for class imbalance
     weights = counts.sum() / (num_classes * counts.clamp_min(1))
 
     # Track an exponential moving average of model weights for more stable eval
@@ -93,6 +95,7 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
     EPOCHS = 100
 
     # Start by training the classifier and metadata MLP; backbone is frozen
+    # Only these heads are optimized initially; unfreezer will add groups later
     optimizer = SGD(
         [
             {
@@ -112,11 +115,12 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
     unfreezer.optimizer = optimizer
     # Reduce LR when validation loss plateaus
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=3)
-    # Class-balanced loss using inverse-frequency weights with mild smoothing
+    # Use label smoothing and class-balanced weights
     criterion = CrossEntropyLoss(
         label_smoothing=0.05, weight=torch.tensor(weights).to(device)
     )
 
+    # Early stopping tracking state
     patience = 7
     best_loss = float("inf")
     no_improve = 0

@@ -33,6 +33,7 @@ class HamNet(torch.nn.Module, ABC):
         self.backbone, num_features = self.set_backbone(backbone)
 
         # Small MLP to process 3 metadata features: sex, age, anatom_site
+        # Encode 3 metadata scalars into a compact representation
         self.meta_net = torch.nn.Sequential(
             torch.nn.Linear(3, 64),
             torch.nn.SiLU(),
@@ -74,6 +75,7 @@ class HamNet(torch.nn.Module, ABC):
         Returns:
             Logits tensor of shape (B, 7).
         """
+        # Backbone returns pooled per-image feature vectors
         img_features = self.backbone(img)
         meta_features = self.meta_net(meta)
         # Concatenate along feature dimension (B, F_img + F_meta)
@@ -90,6 +92,7 @@ class HamDenseNet(HamNet):
     def set_backbone(self, backbone: torch.nn.Module) -> Tuple[torch.nn.Module, int]:
         """Replace DenseNet classifier with identity and return feature size."""
         num_features = backbone.classifier.in_features
+        # Remove DenseNet's classification layer to expose penultimate features
         backbone.classifier = torch.nn.Identity()
         return backbone, num_features
 
@@ -103,5 +106,6 @@ class HamResNet(HamNet):
     def set_backbone(self, backbone: torch.nn.Module) -> Tuple[torch.nn.Module, int]:
         """Replace ResNet fully-connected head with identity and return feature size."""
         num_features = backbone.fc.in_features
+        # Replace the final FC layer with identity to get pooled features
         backbone.fc = torch.nn.Identity()
         return backbone, num_features

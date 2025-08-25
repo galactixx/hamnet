@@ -18,15 +18,18 @@ if __name__ == "__main__":
     resnet = models.resnet50(weights=None)
     resnet.load_state_dict(torch.load(pth_path, map_location=torch.device("cpu")))
 
+    # Freeze backbone parameters before progressive unfreezing schedule
     for name, param in resnet.named_parameters():
         param.requires_grad = False
 
+    # Keep BatchNorm layers in eval mode until their layers are unfrozen
     for name, module in resnet.named_modules():
         if isinstance(module, torch.nn.BatchNorm2d):
             module.eval()
 
     model = HamResNet(resnet=resnet)
 
+    # Define which ResNet layers to unfreeze and when during training
     unfreezer = ProgressiveUnfreezer(
         model.backbone,
         [

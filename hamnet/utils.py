@@ -25,6 +25,7 @@ def unfreeze_layer(model: torch.nn.Module, layer: str) -> None:
     """Unfreeze parameters and enable training for BatchNorm in a layer prefix."""
     for name, param in model.named_parameters():
         if name.startswith(layer):
+            # Allow gradients to flow for these parameters
             param.requires_grad = True
 
     for name, module in model.named_modules():
@@ -89,6 +90,7 @@ def safe_load_into_ham(
     model: HamNet, path: Path, device: torch.device, layer_prefix: str
 ) -> HamNet:
     """Load a checkpoint into `HamNet` fixing layer prefixes for the backbone."""
+    # Load checkpoint dictionary or plain state_dict
     sd = torch.load(path, map_location=torch.device(device), weights_only=True)
 
     if isinstance(sd, dict) and "state_dict" in sd:
@@ -104,6 +106,7 @@ def safe_load_into_ham(
 
         new_sd[nk] = v
 
+    # Strict=True ensures missing/mismatched keys fail fast
     model.load_state_dict(new_sd, strict=True)
     return model
 
@@ -131,8 +134,10 @@ def test_evaluate(
             for aug in tta_transforms:
                 imgs = torch.stack([aug(img.cpu()) for img in imgs]).to(device)
                 logits = model(imgs, meta)
-                probs.append(torch.softmax(logits), dim=1)
+                # Collect softmax probabilities for test-time augmentation
+                probs.append(torch.softmax(logits, dim=1))
 
+            # Average probabilities across TTA variants and pick argmax
             preds = torch.stack(probs).mean(0).argmax(1)
 
             correct += (preds == labels).sum().item()

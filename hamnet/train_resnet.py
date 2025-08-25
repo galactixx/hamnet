@@ -16,7 +16,7 @@ if __name__ == "__main__":
         "galactixx/Torchvision-ResNet50-11ad3fa6", "resnet50-11ad3fa6.bin"
     )
     resnet = models.resnet50(weights=None)
-    resnet.load_state_dict(torch.load(pth_path, map_location=torch.device("cpu")))
+    resnet.load_state_dict(torch.load(pth_path, map_location=device))
 
     # Freeze backbone parameters before progressive unfreezing schedule
     for name, param in resnet.named_parameters():

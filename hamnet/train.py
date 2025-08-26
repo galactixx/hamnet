@@ -10,7 +10,7 @@ from typing import Tuple
 import torch
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn import CrossEntropyLoss
-from torch.optim import SGD
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch_ema import ExponentialMovingAverage
@@ -96,18 +96,16 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
 
     # Start by training the classifier and metadata MLP; backbone is frozen
     # Only these heads are optimized initially; unfreezer will add groups later
-    optimizer = SGD(
+    optimizer = AdamW(
         [
             {
                 "params": model.classifier.parameters(),
                 "lr": 1e-3,
-                "momentum": 0.9,
                 "weight_decay": 1e-4,
             },
             {
                 "params": model.meta_net.parameters(),
                 "lr": 1e-3,
-                "momentum": 0.9,
                 "weight_decay": 1e-4,
             },
         ]

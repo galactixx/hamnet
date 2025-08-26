@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
 import torchvision.transforms.functional as F
-from torch.optim import SGD
+from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -42,7 +42,6 @@ class ParamGroup:
     epoch: int
     params: torch.nn.Parameter
     lr: float
-    momentum: float
     decay: float
 
     @property
@@ -50,7 +49,6 @@ class ParamGroup:
         return {
             "params": self.params,
             "lr": self.lr,
-            "momentum": self.momentum,
             "weight_decay": self.decay,
         }
 
@@ -61,14 +59,14 @@ class ProgressiveUnfreezer:
     def __init__(self, model: torch.nn.Module, params: List[ParamGroup]) -> None:
         self.model = model
         self.params = deque(sorted(params, key=lambda x: x.epoch))
-        self._optimizer: Optional[SGD] = None
+        self._optimizer: Optional[AdamW] = None
 
     @property
-    def optimizer(self) -> SGD:
+    def optimizer(self) -> AdamW:
         return self._optimizer
 
     @optimizer.setter
-    def optimizer(self, optimizer: SGD) -> None:
+    def optimizer(self, optimizer: AdamW) -> None:
         self._optimizer = optimizer
 
     def unfreeze(self, epoch: int) -> None:
@@ -121,6 +119,8 @@ def test_evaluate(
         lambda x: F.vflip(x),
         lambda x: F.rotate(x, 15),
         lambda x: F.adjust_brightness(x, 0.2),
+        lambda x: F.adjust_contrast(x, 0.5),
+        lambda x: F.rotate(x, -15),
     ]
 
     correct = total = 0

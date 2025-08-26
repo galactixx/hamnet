@@ -22,7 +22,7 @@ class HamNet(torch.nn.Module, ABC):
     and concatenated with image features before classification.
     """
 
-    def __init__(self, backbone: torch.nn.Module) -> None:
+    def __init__(self, backbone: torch.nn.Module, fc_feats: int) -> None:
         """Initialize the model with a backbone and build heads.
 
         Args:
@@ -30,6 +30,7 @@ class HamNet(torch.nn.Module, ABC):
                 classifier layer should be replaceable to expose features.
         """
         super().__init__()
+        self.fc_feats = fc_feats
         self.backbone, num_features = self.set_backbone(backbone)
 
         # Small MLP to process 3 metadata features: sex, age, anatom_site
@@ -44,10 +45,10 @@ class HamNet(torch.nn.Module, ABC):
         # Final classifier over concatenated [image_features || meta_features]
         # Output has 7 logits corresponding to 7 diagnosis classes
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(num_features + 128, 1024),
+            torch.nn.Linear(num_features + 128, self.fc_feats),
             torch.nn.SiLU(),
             torch.nn.Dropout(0.5),
-            torch.nn.Linear(1024, 7),
+            torch.nn.Linear(self.fc_feats, 7),
         )
 
     @abstractmethod
@@ -87,7 +88,7 @@ class HamDenseNet(HamNet):
     """HamNet specialization that uses a torchvision DenseNet backbone."""
 
     def __init__(self, densenet: DenseNet) -> None:
-        super().__init__(backbone=densenet)
+        super().__init__(backbone=densenet, fc_feats=512)
 
     def set_backbone(self, backbone: torch.nn.Module) -> Tuple[torch.nn.Module, int]:
         """Replace DenseNet classifier with identity and return feature size."""
@@ -101,7 +102,7 @@ class HamResNet(HamNet):
     """HamNet specialization that uses a torchvision ResNet backbone."""
 
     def __init__(self, resnet: ResNet) -> None:
-        super().__init__(backbone=resnet)
+        super().__init__(backbone=resnet, fc_feats=1024)
 
     def set_backbone(self, backbone: torch.nn.Module) -> Tuple[torch.nn.Module, int]:
         """Replace ResNet fully-connected head with identity and return feature size."""

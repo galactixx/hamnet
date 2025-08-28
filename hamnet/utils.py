@@ -127,12 +127,16 @@ def test_evaluate(
 
     with torch.no_grad():
         for imgs, meta, labels in tqdm(loader, desc=f"Evaluation: "):
-            imgs, meta, labels = imgs.to(device), meta.to(device), labels.to(device)
+            base_imgs, meta, labels = (
+                imgs.to(device),
+                meta.to(device),
+                labels.to(device),
+            )
 
             probs = []
 
             for aug in tta_transforms:
-                imgs = torch.stack([aug(img.cpu()) for img in imgs]).to(device)
+                imgs = torch.stack([aug(img.cpu()) for img in base_imgs]).to(device)
                 logits = model(imgs, meta)
                 # Collect softmax probabilities for test-time augmentation
                 probs.append(torch.softmax(logits, dim=1))

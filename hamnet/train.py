@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from hamnet.constants import DIAGNOSIS_MAPPING, SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
-from hamnet.hamnet import HamNet
+from hamnet.hamnet import HamFiLMNet
 from hamnet.preprocessing import concat_metadata, load_metadata
 from hamnet.utils import ProgressiveUnfreezer, seed_everything
 
@@ -26,7 +26,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def train_evaluate(
-    model: HamNet,
+    model: HamFiLMNet,
     loader: DataLoader,
     criterion: CrossEntropyLoss,
     ema: ExponentialMovingAverage,
@@ -61,7 +61,7 @@ def train_evaluate(
     return eval_loss, correct / total
 
 
-def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
+def train(model: HamFiLMNet, unfreezer: ProgressiveUnfreezer) -> None:
     """Train a `HamNet` model with progressive layer unfreezing.
 
     The function performs train/val split, constructs loaders, optimizers,
@@ -98,16 +98,9 @@ def train(model: HamNet, unfreezer: ProgressiveUnfreezer) -> None:
     # Only these heads are optimized initially; unfreezer will add groups later
     optimizer = AdamW(
         [
-            {
-                "params": model.classifier.parameters(),
-                "lr": 1e-3,
-                "weight_decay": 1e-4,
-            },
-            {
-                "params": model.meta_net.parameters(),
-                "lr": 1e-3,
-                "weight_decay": 1e-4,
-            },
+            {"params": model.meta_embed.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
+            {"params": model.gate_mlp.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
+            {"params": model.head.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
         ]
     )
     unfreezer.optimizer = optimizer

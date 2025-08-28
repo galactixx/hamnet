@@ -9,15 +9,16 @@ HamNet provides two transfer-learning models (ResNet50 and DenseNet121), fine-tu
 
 ### Model
 - **Backbones**: ResNet50 and DenseNet121 pre-trained on ImageNet
-- **Head**: Replaced final FC layer for classification
-- **Training**: Fine-tuned on HAM10000 splits
+- **Head**: FiLM-based fusion head. Metadata (sex, age, site) is passed through a gated FiLM to produce per-feature scales (γ) that modulate the backbone feature vector via element-wise multiplication.
+- **Fusion**: A small MLP also embeds the metadata; this embedding is concatenated with the FiLM-gated backbone features and fed into the final classifier.
+- **Training**: Fine-tuned on HAM10000 stratified splits
 
 ### Results
 
 | Model | Test accuracy (HAM10000) |
 | --- | --- |
-| ResNet50 | 90.2% |
-| DenseNet121 | 90.1% |
+| ResNet50 | 91.3% |
+| DenseNet121 | 90.5% |
 
 ### Fine-tuned models
 - ResNet50: [Ham-ResNet](https://huggingface.co/galactixx/Ham-ResNet)

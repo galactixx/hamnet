@@ -14,7 +14,7 @@ from torchvision.models.densenet import DenseNet
 from torchvision.models.resnet import ResNet
 
 
-class HamNet(torch.nn.Module, ABC):
+class HamFiLMNet(torch.nn.Module, ABC):
     """Abstract network that fuses CNN image features with tabular metadata.
 
     The network expects a vision backbone that outputs a fixed-length feature
@@ -22,7 +22,14 @@ class HamNet(torch.nn.Module, ABC):
     and concatenated with image features before classification.
     """
 
-    def __init__(self, backbone: torch.nn.Module, fc_feats: int) -> None:
+    def __init__(
+        self,
+        backbone: torch.nn.Module,
+        fc_feats: int,
+        num_classes: int = 7,
+        meta_hidden: int = 64,
+        keep_meta_concat: bool = True,
+    ) -> None:
         """Initialize the model with a backbone and build heads.
 
         Args:
@@ -30,25 +37,30 @@ class HamNet(torch.nn.Module, ABC):
                 classifier layer should be replaceable to expose features.
         """
         super().__init__()
-        self.fc_feats = fc_feats
-        self.backbone, num_features = self.set_backbone(backbone)
+        self.backbone, d = self.set_backbone(backbone)
 
         # Small MLP to process 3 metadata features: sex, age, anatom_site
-        # Encode 3 metadata scalars into a compact representation
-        self.meta_net = torch.nn.Sequential(
-            torch.nn.Linear(3, 64),
-            torch.nn.SiLU(),
-            torch.nn.Linear(64, 128),
-            torch.nn.SiLU(),
+        self.meta_embed = torch.nn.Sequential(
+            torch.nn.Linear(3, 64), torch.nn.SiLU(), torch.nn.Linear(64, 128)
         )
 
-        # Final classifier over concatenated [image_features || meta_features]
-        # Output has 7 logits corresponding to 7 diagnosis classes
-        self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(num_features + 128, self.fc_feats),
+        # FiLM gate via MLP
+        self.gate_mlp = torch.nn.Sequential(
+            torch.nn.Linear(3, meta_hidden),
             torch.nn.SiLU(),
-            torch.nn.Dropout(0.5),
-            torch.nn.Linear(self.fc_feats, 7),
+            torch.nn.Linear(meta_hidden, d),
+        )
+
+        # Concatenate meta features if needed
+        self.keep_meta_concat = keep_meta_concat
+
+        # Final classifier over concatenated [image_features || meta_features]
+        in_dim = d + (128 if keep_meta_concat else 0)
+        self.head = torch.nn.Sequential(
+            torch.nn.Linear(in_dim, fc_feats),
+            torch.nn.SiLU(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(fc_feats, num_classes),
         )
 
     @abstractmethod
@@ -67,7 +79,7 @@ class HamNet(torch.nn.Module, ABC):
         pass
 
     def forward(self, img: torch.Tensor, meta: torch.Tensor) -> torch.Tensor:
-        """Forward pass.
+        """Forward pass via a gated FiLM layer and a concatenated small MLP.
 
         Args:
             img: Tensor of shape (B, C, H, W).
@@ -76,15 +88,19 @@ class HamNet(torch.nn.Module, ABC):
         Returns:
             Logits tensor of shape (B, 7).
         """
-        # Backbone returns pooled per-image feature vectors
-        img_features = self.backbone(img)
-        meta_features = self.meta_net(meta)
-        # Concatenate along feature dimension (B, F_img + F_meta)
-        x = torch.cat([img_features, meta_features], dim=1)
-        return self.classifier(x)
+        x = self.backbone(img)
+
+        gamma = torch.sigmoid(self.gate_mlp(meta))
+        x = x * gamma
+
+        if self.keep_meta_concat:
+            m = self.meta_embed(meta)
+            x = torch.cat([x, m], dim=1)
+
+        return self.head(x)
 
 
-class HamDenseNet(HamNet):
+class HamDenseNet(HamFiLMNet):
     """HamNet specialization that uses a torchvision DenseNet backbone."""
 
     def __init__(self, densenet: DenseNet) -> None:
@@ -98,7 +114,7 @@ class HamDenseNet(HamNet):
         return backbone, num_features
 
 
-class HamResNet(HamNet):
+class HamResNet(HamFiLMNet):
     """HamNet specialization that uses a torchvision ResNet backbone."""
 
     def __init__(self, resnet: ResNet) -> None:

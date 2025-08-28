@@ -51,7 +51,7 @@ def get_dataloader(
 
     # Slightly larger batch for efficiency; workers tuned for common CPUs
     trainloader = DataLoader(
-        train, shuffle=True, batch_size=32, generator=g, num_workers=2
+        train, shuffle=True, batch_size=64, generator=g, num_workers=2
     )
     # No shuffling for evaluation splits
     testloader = DataLoader(test, shuffle=False, batch_size=32, num_workers=2)

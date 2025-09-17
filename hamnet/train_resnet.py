@@ -4,7 +4,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from torchvision import models
 
-from hamnet.hamnet import HamResNet
+from hamnet.hamnet import HamFiLMResNet
 from hamnet.train import train
 from hamnet.utils import ParamGroup, ProgressiveUnfreezer
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
         if isinstance(module, torch.nn.BatchNorm2d):
             module.eval()
 
-    model = HamResNet(resnet=resnet)
+    model = HamFiLMResNet(resnet=resnet)
 
     # Define which ResNet layers to unfreeze and when during training
     unfreezer = ProgressiveUnfreezer(
@@ -44,7 +44,7 @@ if __name__ == "__main__":
                 layer="layer3",
                 epoch=6,
                 params=model.backbone.layer3.parameters(),
-                lr=5e-4,
+                lr=1e-4,
                 decay=1e-5,
             ),
             ParamGroup(

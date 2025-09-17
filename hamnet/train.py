@@ -98,13 +98,17 @@ def train(model: HamFiLMNet, unfreezer: ProgressiveUnfreezer) -> None:
     # Only these heads are optimized initially; unfreezer will add groups later
     optimizer = AdamW(
         [
+            {
+                "params": model.site_embeds.parameters(),
+                "lr": 1e-3,
+                "weight_decay": 1e-4,
+            },
             {"params": model.meta_embed.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
             {"params": model.gate_mlp.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
             {"params": model.head.parameters(), "lr": 1e-3, "weight_decay": 1e-4},
         ]
     )
     unfreezer.optimizer = optimizer
-    # Reduce LR when validation loss plateaus
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=3)
     # Use label smoothing and class-balanced weights
     criterion = CrossEntropyLoss(

@@ -9,7 +9,7 @@ from torchvision import models
 from torchvision.models import DenseNet121_Weights
 from torchvision.models.densenet import DenseNet
 
-from hamnet.hamnet import HamDenseNet
+from hamnet.hamnet import HamFiLMDenseNet
 from hamnet.train import train
 from hamnet.utils import ParamGroup, ProgressiveUnfreezer
 
@@ -39,7 +39,7 @@ def get_densenet() -> DenseNet:
 
 if __name__ == "__main__":
     densenet = get_densenet()
-    model = HamDenseNet(densenet=densenet)
+    model = HamFiLMDenseNet(densenet=densenet)
 
     # Freeze backbone parameters before progressive unfreezing schedule
     for _, param in model.backbone.named_parameters():
@@ -58,21 +58,21 @@ if __name__ == "__main__":
                 layer="denseblock4",
                 epoch=3,
                 params=model.backbone.features.denseblock4.parameters(),
-                lr=1e-3,
+                lr=1e-4,
                 decay=1e-5,
             ),
             ParamGroup(
                 layer="denseblock3",
                 epoch=6,
                 params=model.backbone.features.denseblock3.parameters(),
-                lr=5e-4,
+                lr=1e-4,
                 decay=1e-5,
             ),
             ParamGroup(
                 layer="denseblock2",
                 epoch=9,
                 params=model.backbone.features.denseblock2.parameters(),
-                lr=5e-4,
+                lr=1e-4,
                 decay=1e-5,
             ),
         ],

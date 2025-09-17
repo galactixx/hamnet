@@ -3,6 +3,10 @@
 # Global seed to keep dataset splits, shuffling, and training deterministic
 SEED = 42
 
+# Standard ImageNet normalization used by torchvision backbones
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
 # Encode binary sex metadata as integers consumed by the model
 SEX_MAPPING = {"male": 0, "female": 1}
 

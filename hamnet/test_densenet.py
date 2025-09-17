@@ -8,7 +8,7 @@ from torchvision import models
 
 from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
-from hamnet.hamnet import HamDenseNet
+from hamnet.hamnet import HamFiLMDenseNet
 from hamnet.preprocessing import concat_metadata, load_metadata
 from hamnet.utils import safe_load_into_ham, seed_everything, test_evaluate
 
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # Initialize architecture; weights are loaded from checkpoint below
     densenet = models.densenet121(weights=None)
-    model = HamDenseNet(densenet=densenet)
+    model = HamFiLMDenseNet(densenet=densenet)
     model.to(device)
 
     pth_path = hf_hub_download("galactixx/Ham-DenseNet", "ham-densenet.bin")

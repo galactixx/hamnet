@@ -18,7 +18,7 @@ HamNet provides two transfer-learning models (ResNet50 and DenseNet121), fine-tu
 | Model | Test accuracy (HAM10000) |
 | --- | --- |
 | ResNet50 | 91.3% |
-| DenseNet121 | 90.5% |
+| DenseNet121 | 90.2% |
 
 ### Fine-tuned models
 - ResNet50: [Ham-ResNet](https://huggingface.co/galactixx/Ham-ResNet)

@@ -4,9 +4,11 @@ Provides `HamImage` records, metadata loading/cleaning, normalization helpers,
 and a `Dataset` for classification with optional augmentations.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Callable, List, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -15,7 +17,41 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from hamnet.constants import ANATOM_SITE_MAPPING, DIAGNOSIS_MAPPING, SEX_MAPPING
+from hamnet.constants import (
+    ANATOM_SITE_MAPPING,
+    DIAGNOSIS_MAPPING,
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    SEX_MAPPING,
+)
+
+
+@dataclass(frozen=True)
+class Statistics:
+    mean: float
+    std: float
+
+
+@dataclass(frozen=True)
+class TrainStatistics:
+    age: Statistics
+    sex: Statistics
+
+
+def calculate_statistics(
+    images: List[HamImage], getter: Callable[[HamImage], float]
+) -> Statistics:
+    obs = [getter(img) for img in images]
+    mean, std = compute_mean_std(obs)
+    return Statistics(mean=mean, std=std)
+
+
+def get_age(image: HamImage) -> float:
+    return image.age
+
+
+def get_sex(image: HamImage) -> float:
+    return SEX_MAPPING[image.sex]
 
 
 @dataclass(frozen=True)
@@ -75,29 +111,20 @@ def normalize_meta(
 
 
 class HamImageDiagnosisDataset(Dataset):
-    def __init__(self, images: List[HamImage], train: bool) -> None:
+    def __init__(
+        self, stats: TrainStatistics, images: List[HamImage], train: bool
+    ) -> None:
+        self.stats = stats
         self.images = images
-        # Standard ImageNet normalization used by torchvision backbones
-        self.mean = [0.485, 0.456, 0.406]
-        self.std = [0.229, 0.224, 0.225]
-
-        ages = [img.age for img in images]
-        self.mean_age, self.std_age = compute_mean_std(ages)
-
-        sexes = [SEX_MAPPING[img.sex] for img in images]
-        self.mean_sex, self.std_sex = compute_mean_std(sexes)
-
-        sites = [ANATOM_SITE_MAPPING[img.anatom_site] for img in images]
-        self.mean_site, self.std_site = compute_mean_std(sites)
 
         if not train:
             # Deterministic transforms for evaluation
             self.transforms = transforms.Compose(
                 [
                     transforms.ToPILImage(),
-                    transforms.Resize((500, 500)),
+                    transforms.Resize((512, 512)),
                     transforms.ToTensor(),
-                    transforms.Normalize(self.mean, self.std),
+                    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
                 ]
             )
         else:
@@ -105,21 +132,21 @@ class HamImageDiagnosisDataset(Dataset):
             self.transforms = transforms.Compose(
                 [
                     transforms.ToPILImage(),
-                    transforms.Resize((500, 500)),
+                    transforms.Resize((512, 512)),
                     transforms.RandomHorizontalFlip(),
                     transforms.RandomRotation(15),
                     transforms.ColorJitter(
                         brightness=0.2, contrast=0.2, saturation=0.2
                     ),
                     transforms.ToTensor(),
-                    transforms.Normalize(self.mean, self.std),
+                    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
                 ]
             )
 
     def __len__(self) -> int:
         return len(self.images)
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, int]:
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, int, int]:
         image = self.images[index]
         image_path = image.path / f"{image.identifier}.jpg"
         # Load BGR image via OpenCV and convert to RGB tensor
@@ -134,8 +161,8 @@ class HamImageDiagnosisDataset(Dataset):
 
         # Normalize tabular metadata to zero mean, unit variance
         meta = normalize_meta(
-            values=[sex, age, site],
-            means=[self.mean_sex, self.mean_age, self.mean_site],
-            stds=[self.std_sex, self.std_age, self.std_site],
+            values=[sex, age],
+            means=[self.stats.sex.mean, self.stats.age.mean],
+            stds=[self.stats.sex.std, self.stats.age.std],
         )
-        return img, meta, diagnosis
+        return img, meta, site, diagnosis

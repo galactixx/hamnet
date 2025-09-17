@@ -8,7 +8,7 @@ from torchvision import models
 
 from hamnet.constants import SEED
 from hamnet.dataloader import get_dataloader, get_train_test_val_split
-from hamnet.hamnet import HamResNet
+from hamnet.hamnet import HamFiLMResNet
 from hamnet.preprocessing import concat_metadata, load_metadata
 from hamnet.utils import safe_load_into_ham, seed_everything, test_evaluate
 
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # Initialize architecture; weights are loaded from checkpoint below
     resnet = models.resnet50(weights=None)
-    model = HamResNet(resnet=resnet)
+    model = HamFiLMResNet(resnet=resnet)
     model.to(device)
 
     pth_path = hf_hub_download("galactixx/Ham-ResNet", "ham-resnet.bin")

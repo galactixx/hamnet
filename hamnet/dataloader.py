@@ -1,13 +1,23 @@
 """Data split and DataLoader creation utilities."""
 
+import random
 from typing import List, Tuple
 
+import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from hamnet.constants import DIAGNOSIS_MAPPING, SEED
-from hamnet.preprocessing import HamImage, HamImageDiagnosisDataset
+from hamnet.preprocessing import (
+    HamImage,
+    HamImageDiagnosisDataset,
+    TrainStatistics,
+    calculate_statistics,
+    get_age,
+    get_sex,
+    get_site,
+)
 
 
 def get_train_test_val_split(
@@ -41,9 +51,17 @@ def get_dataloader(
     val_images: List[HamImage],
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """Create PyTorch dataloaders with deterministic shuffling for train set."""
-    train = HamImageDiagnosisDataset(train_images, train=True)
-    test = HamImageDiagnosisDataset(test_images, train=False)
-    val = HamImageDiagnosisDataset(val_images, train=False)
+    age = calculate_statistics(train_images, get_age)
+    sex = calculate_statistics(train_images, get_sex)
+    train_stats = TrainStatistics(age=age, sex=sex)
+
+    def worker_init_fn(worker_id: int) -> None:
+        np.random.seed(SEED + worker_id)
+        random.seed(SEED + worker_id)
+
+    train = HamImageDiagnosisDataset(train_stats, train_images, train=True)
+    test = HamImageDiagnosisDataset(train_stats, test_images, train=False)
+    val = HamImageDiagnosisDataset(train_stats, val_images, train=False)
 
     # Use a generator to make shuffling reproducible across runs
     g = torch.Generator()
@@ -51,7 +69,12 @@ def get_dataloader(
 
     # Slightly larger batch for efficiency; workers tuned for common CPUs
     trainloader = DataLoader(
-        train, shuffle=True, batch_size=64, generator=g, num_workers=2
+        train,
+        shuffle=True,
+        batch_size=64,
+        generator=g,
+        num_workers=2,
+        worker_init_fn=worker_init_fn,
     )
     # No shuffling for evaluation splits
     testloader = DataLoader(test, shuffle=False, batch_size=32, num_workers=2)
